@@ -13,11 +13,9 @@ async function sendWelcomeMessage(to) {
                 interactive: {
                     type: "button",
                     body: {
-                        text: `Welcome to Skill Tech 👋
+                        text: `Welcome to Skill Tech.
 
-I'm your AI Assistant.
-
-How can I help you today?`
+I'm your AI Assistant, ready to assist you with product information, quotations, technical support, and order inquiries. How may I help you today?`
                     },
                     action: {
                         buttons: [
@@ -25,21 +23,21 @@ How can I help you today?`
                                 type: "reply",
                                 reply: {
                                     id: "btn_products",
-                                    title: "📦 Products"
+                                    title: "📦 Product Enquiry"
                                 }
                             },
                             {
                                 type: "reply",
                                 reply: {
                                     id: "btn_install",
-                                    title: "🛠️ Install"
+                                    title: "🛠️ Installation"
                                 }
                             },
                             {
                                 type: "reply",
                                 reply: {
                                     id: "btn_support",
-                                    title: "🎧 Support"
+                                    title: "🎧 Customer Support"
                                 }
                             }
                         ]

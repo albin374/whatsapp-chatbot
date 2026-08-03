@@ -1,7 +1,7 @@
 const axios = require("axios");
 require("dotenv").config();
 
-async function sendMountingSolutions(to) {
+async function sendDisplaysMessage(to) {
     try {
         const response = await axios.post(
             `https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,
@@ -13,20 +13,19 @@ async function sendMountingSolutions(to) {
                 interactive: {
                     type: "list",
                     body: {
-                        text: "Please choose the mounting solution that best fits your requirements."
+                        text: "Which display solution are you looking for?"
                     },
                     action: {
                         button: "View options",
                         sections: [
                             {
-                                title: "Mounting Solutions",
+                                title: "Display Solutions",
                                 rows: [
-                                    { id: "mount_tv_display", title: "📺 TV & Display" },
-                                    { id: "mount_tv_ceiling", title: "↕️ TV Ceiling Mounts" },
-                                    { id: "mount_monitor", title: "🖥️ Monitor & Desktop" },
-                                    { id: "mount_motorized", title: "⚙️ Motorized Mounts" },
-                                    { id: "mount_tv_floor", title: "🛒 TV Floor Stands" },
-                                    { id: "mount_other", title: "➕ Other Solutions" }
+                                    { id: "display_led", title: "LED Display Solution" },
+                                    { id: "display_interactive", title: "Interactive Display" },
+                                    { id: "display_videowall", title: "Video Wall" },
+                                    { id: "display_signage", title: "Digital Signage" },
+                                    { id: "display_other", title: "Other Display" }
                                 ]
                             }
                         ]
@@ -41,11 +40,11 @@ async function sendMountingSolutions(to) {
             }
         );
 
-        console.log("✅ Mounting Solutions Message Sent:", response.data);
+        console.log("✅ Displays Message Sent:", response.data);
         return response.data;
 
     } catch (err) {
-        console.error("❌ Error sending mounting solutions message");
+        console.error("❌ Error sending displays message");
         console.error("Status:", err.response?.status);
         console.error(
             "Response:",
@@ -55,5 +54,5 @@ async function sendMountingSolutions(to) {
 }
 
 module.exports = {
-    sendMountingSolutions
+    sendDisplaysMessage
 };
