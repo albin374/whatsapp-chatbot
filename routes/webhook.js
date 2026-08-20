@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { sendWelcomeMessage, sendProductsMessage } = require("../services/whatsapp");
+const { sendWelcomeMessage, sendProductsMessage, sendProductDetailsMessage, sendProductMedia, sendProductVideoLink, sendTextMessage, sendProductListMessage } = require("../services/whatsapp");
+const db = require("../config/db");
 const { sendRetailCategories } = require("../services/products/retail/retail");
 const { sendWholesaleCategories } = require("../services/products/wholsale/wholsale");
 const { sendSubmissionConfirmationMessage } = require("../services/common/submission");
@@ -650,81 +651,62 @@ router.post("/", async (req, res) => {
             }
             if (userStates[from]?.step === "WAITING_FOR_CORRECTED_INSTALL_LOCATION") { userStates[from].location = text; userStates[from].step = "WAITING_FOR_INSTALL_SUBMIT"; await sendInstallSummaryMessage(from, userStates[from], true); return res.sendStatus(200); }
 
-            if (text.toLowerCase() === "hi" || text === "btn_start_new") {
-                await sendWelcomeMessage(from);
-            } else if (text === "btn_talk_sales") {
-                await sendWelcomeMessage(from); // Redirect to welcome for now, or handle sales
-            } else if (text === "btn_products") {
-                await sendProductsMessage(from);
-            } else if (text === "btn_retail") {
-                userStates[from] = { customerType: "Retail" };
-                await sendRetailCategories(from);
-            } else if (text === "btn_wholesale") {
-                userStates[from] = { customerType: "Wholesale" };
-                await sendWholesaleCategories(from);
-            } else if (text === "btn_mounts") {
-                await sendMountingSolutions(from);
-            } else if (text === "btn_displays") {
-                await sendDisplaysMessage(from);
-            } else if (text === "btn_cables") {
-                await sendCablesMessage(from);
-            } else if (text === "btn_install") {
-                await sendInstallationMessage(from);
-            } else if (text === "btn_support") {
-                userStates[from] = { step: "WAITING_FOR_NAME_SUPPORT" };
-                await sendSupportMessage(from);
-            } else if (text === "btn_install_consumer") {
-                userStates[from] = { step: "WAITING_FOR_SERVICE", customerType: "Consumer" };
-                await sendInstallationServicesMessage(from);
-            } else if (text === "btn_install_corporate") {
-                userStates[from] = { step: "WAITING_FOR_SERVICE", customerType: "Corporate" };
-                await sendCorporateServicesMessage(from);
-            } else if (text === "btn_install_tv") {
-                if (!userStates[from]) userStates[from] = { customerType: "Unknown" };
-                userStates[from].serviceType = "TV Installation";
-                userStates[from].step = "WAITING_FOR_TV_SIZE";
-                await sendTVSizeMessage(from);
-            } else if (text === "btn_corp_tv") {
-                if (!userStates[from]) userStates[from] = { customerType: "Corporate" };
-                userStates[from].serviceType = "Commercial TV Install";
-                userStates[from].step = "WAITING_FOR_TV_SIZE";
-                await sendTVSizeMessage(from);
-            } else if (text === "btn_corp_led" || text === "btn_corp_av" || text === "btn_corp_cctv") {
-                if (!userStates[from]) userStates[from] = { customerType: "Corporate" };
+            if (text.startsWith('dl_doc_') || text.startsWith('dl_img_') || text.startsWith('dl_vid_')) {
+                const action = text.split('_')[1]; // 'doc', 'img', or 'vid'
+                const productId = text.split('_')[2];
                 
-                if (text === "btn_corp_led") userStates[from].serviceType = "LED / Video Wall Installation";
-                if (text === "btn_corp_av") userStates[from].serviceType = "Meeting Room AV Setup";
-                if (text === "btn_corp_cctv") userStates[from].serviceType = "CCTV Installation";
+                try {
+                    const [productRows] = await db.query('SELECT * FROM products WHERE id = ?', [productId]);
+                    if (productRows.length > 0) {
+                        const product = productRows[0];
+                        if (action === 'doc' && product.data_sheet_url) {
+                            await sendProductMedia(from, product.data_sheet_url, 'document', `${product.sku || 'Product'}-DataSheet.pdf`);
+                        } else if (action === 'img' && product.image_url) {
+                            // Send image as a document to bypass WhatsApp's strict image format validation (like unsupported WebP)
+                            // We add a generic extension or let WhatsApp infer it from the mime type.
+                            await sendProductMedia(from, product.image_url, 'document', `${product.sku || 'Product'}-Image`);
+                        } else if (action === 'vid') {
+                            if (product.youtube_url) {
+                                await sendProductVideoLink(from, product.youtube_url);
+                            } else {
+                                await sendTextMessage(from, "This product has no preview video available at this moment. Sorry for the inconvenience.");
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error sending media/link:", err);
+                }
+                return res.sendStatus(200);
+            }
+
+            // Normalize user text: remove all spaces, hyphens, and convert to lowercase
+            const cleanText = text.replace(/[\s-]/g, '').toLowerCase();
+
+            // Check if text is a SKU in the database (Fuzzy search)
+            // We also strip spaces and hyphens from the DB sku for a robust comparison.
+            const query = `
+                SELECT p.*, c.mainCategory, c.subCategory 
+                FROM products p
+                LEFT JOIN categories c ON p.category_id = c.id
+                WHERE LOWER(REPLACE(REPLACE(p.sku, ' ', ''), '-', '')) = ?
+                   OR LOWER(REPLACE(REPLACE(p.sku, ' ', ''), '-', '')) LIKE ?
+            `;
+            const [rows] = await db.query(query, [cleanText, `%${cleanText}%`]);
+            
+            if (rows.length > 0) {
+                // Found a product matching this SKU! Send the first match.
+                await sendProductDetailsMessage(from, rows[0]);
+            } else {
+                // No product found based on text
+                console.log(`[Webhook] Unrecognized text/SKU: ${text}`);
                 
-                userStates[from].step = "WAITING_FOR_SITE_DESCRIPTION";
-                await sendSiteDescriptionMessage(from);
-            } else if (text === "mount_tv_display") {
-                userStates[from] = { step: "WAITING_FOR_MOUNT_TYPE" };
-                await sendMountTypeMessage(from);
-            } else if (["mount_tv_ceiling", "mount_monitor", "mount_motorized", "mount_tv_floor", "mount_other"].includes(text)) {
-                userStates[from] = { step: "WAITING_FOR_MOUNT_TV_SIZE" };
-                if (text === "mount_tv_ceiling") userStates[from].mountType = "TV Ceiling Mount";
-                if (text === "mount_monitor") userStates[from].mountType = "Monitor & Desktop Mount";
-                if (text === "mount_motorized") userStates[from].mountType = "Motorized Mount";
-                if (text === "mount_tv_floor") userStates[from].mountType = "TV Floor Stand";
-                if (text === "mount_other") userStates[from].mountType = "Other Mounting Solution";
-                await sendMountTvSizeMessage(from);
-            } else if (["display_led", "display_interactive", "display_videowall", "display_signage", "display_other"].includes(text)) {
-                userStates[from] = { step: "WAITING_FOR_DISPLAY_SIZE" };
-                if (text === "display_led") userStates[from].displayType = "LED Display Solution";
-                if (text === "display_interactive") userStates[from].displayType = "Interactive Display";
-                if (text === "display_videowall") userStates[from].displayType = "Video Wall";
-                if (text === "display_signage") userStates[from].displayType = "Digital Signage";
-                if (text === "display_other") userStates[from].displayType = "Other Display";
-                await sendDisplaySizeMessage(from);
-            } else if (["cable_hdmi", "cable_av", "cable_electrical", "cable_adapters", "cable_other"].includes(text)) {
-                userStates[from] = { step: "WAITING_FOR_CABLE_SIZE" };
-                if (text === "cable_hdmi") userStates[from].cableType = "HDMI Cables";
-                if (text === "cable_av") userStates[from].cableType = "AV & Data Cables";
-                if (text === "cable_electrical") userStates[from].cableType = "Electrical Wires";
-                if (text === "cable_adapters") userStates[from].cableType = "Adapters & Accessories";
-                if (text === "cable_other") userStates[from].cableType = "Other Cable";
-                await sendCableSizeMessage(from);
+                // Fetch up to 10 latest products to give the user options
+                const [allProducts] = await db.query('SELECT * FROM products ORDER BY created_at DESC LIMIT 10');
+                if (allProducts.length > 0) {
+                    await sendProductListMessage(from, allProducts);
+                } else {
+                    await sendTextMessage(from, "Sorry, we couldn't find any products matching that search.");
+                }
             }
         }
 
