@@ -36,13 +36,13 @@ function App() {
 
   useEffect(() => {
     // Fetch categories
-    fetch('http://localhost:3000/api/categories')
+    fetch('https://whatsapp-chatbot-aci8.onrender.com/api/categories')
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setCategories(data); })
       .catch(err => console.error(err));
 
     // Fetch products
-    fetch('http://localhost:3000/api/products')
+    fetch('https://whatsapp-chatbot-aci8.onrender.com/api/products')
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setProducts(data); })
       .catch(err => console.error(err));
@@ -67,7 +67,7 @@ function App() {
   const handleAddCategory = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:3000/api/categories', {
+      const response = await fetch('https://whatsapp-chatbot-aci8.onrender.com/api/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mainCategory: newMainCategory, subCategory: newSubCategory })
@@ -129,8 +129,8 @@ function App() {
 
     try {
       const url = editingProduct 
-        ? `http://localhost:3000/api/products/${editingProduct.id}` 
-        : 'http://localhost:3000/api/products';
+        ? `https://whatsapp-chatbot-aci8.onrender.com/api/products/${editingProduct.id}` 
+        : 'https://whatsapp-chatbot-aci8.onrender.com/api/products';
         
       const response = await fetch(url, {
         method: editingProduct ? 'PUT' : 'POST',
@@ -262,7 +262,7 @@ function App() {
                       <tr key={prod.id}>
                         <td>
                           {prod.image_url ? (
-                            <img src={`http://localhost:3000/${prod.image_url}`} alt={prod.name} style={{width:'50px', height:'50px', objectFit:'cover', borderRadius:'8px'}} />
+                            <img src={`https://whatsapp-chatbot-aci8.onrender.com/${prod.image_url}`} alt={prod.name} style={{width:'50px', height:'50px', objectFit:'cover', borderRadius:'8px'}} />
                           ) : (
                             <div style={{width:'50px', height:'50px', background:'rgba(255,255,255,0.1)', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.75rem'}}>No Img</div>
                           )}
@@ -277,7 +277,7 @@ function App() {
                         </td>
                         <td>
                           {prod.data_sheet_url && (
-                            <a href={`http://localhost:3000/${prod.data_sheet_url}`} target="_blank" rel="noreferrer" style={{fontSize:'0.875rem'}}>📄 Data Sheet</a>
+                            <a href={`https://whatsapp-chatbot-aci8.onrender.com/${prod.data_sheet_url}`} target="_blank" rel="noreferrer" style={{fontSize:'0.875rem'}}>📄 Data Sheet</a>
                           )}
                         </td>
                         <td><button onClick={() => openProductModal(prod)} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer' }}>Edit</button></td>
